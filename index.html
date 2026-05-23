@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jesters' Box — Content Tracker</title>
+<style>
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f4f4f5;
+    --bg-tertiary: #e4e4e7;
+    --text-primary: #111111;
+    --text-secondary: #52525b;
+    --text-tertiary: #a1a1aa;
+    --border-primary: #a1a1aa;
+    --border-secondary: #d4d4d8;
+    --border-tertiary: #e4e4e7;
+    --bg-warning: #fef3c7;
+    --text-warning: #92400e;
+    --border-warning: #fcd34d;
+    --bg-success: #d1fae5;
+    --text-success: #065f46;
+    --border-success: #6ee7b7;
+    --bg-info: #dbeafe;
+    --text-info: #1e40af;
+    --border-info: #93c5fd;
+    --bg-danger: #fee2e2;
+    --text-danger: #991b1b;
+    --border-danger: #fca5a5;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 10px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  [data-theme="dark"] {
+    --bg-primary: #18181b;
+    --bg-secondary: #27272a;
+    --bg-tertiary: #3f3f46;
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-tertiary: #71717a;
+    --border-primary: #52525b;
+    --border-secondary: #3f3f46;
+    --border-tertiary: #27272a;
+    --bg-warning: #1c1007;
+    --text-warning: #fbbf24;
+    --border-warning: #78350f;
+    --bg-success: #052e16;
+    --text-success: #34d399;
+    --border-success: #065f46;
+    --bg-info: #0f1f3d;
+    --text-info: #60a5fa;
+    --border-info: #1d4ed8;
+    --bg-danger: #1c0a0a;
+    --text-danger: #f87171;
+    --border-danger: #7f1d1d;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    transition: background .2s, color .2s;
+  }
+
+  /* ── Layout ── */
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .875rem 1.5rem;
+    border-bottom: 1px solid var(--border-tertiary);
+    background: var(--bg-primary);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .app-logo { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .app-logo span { color: var(--text-tertiary); font-weight: 400; }
+  .theme-btn {
+    font-size: 12px; padding: 4px 10px; border-radius: var(--radius-md);
+    border: 1px solid var(--border-secondary); cursor: pointer;
+    background: transparent; color: var(--text-secondary);
+  }
+  .theme-btn:hover { color: var(--text-primary); }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex; gap: 5px; margin-bottom: 1.5rem;
+    padding-bottom: 1rem; border-bottom: 1px solid var(--border-tertiary);
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 5px 14px; font-size: 13px; border-radius: var(--radius-md);
+    border: 1px solid var(--border-secondary); cursor: pointer;
+    background: transparent; color: var(--text-secondary); font-family: var(--font);
+    transition: all .15s;
+  }
+  .tab.active {
+    background: var(--bg-secondary); color: var(--text-primary);
+    border-color: var(--border-primary); font-weight: 500;
+  }
+  .tab:hover:not(.active) { color: var(--text-primary); }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Metrics ── */
+  .metric-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .metric { background: var(--bg-secondary); border-radius: var(--radius-md); padding: .875rem; }
+  .metric-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 3px; }
+  .metric-value { font-size: 22px; font-weight: 500; color: var(--text-primary); }
+  .metric-sub { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; }
+
+  /* ── Panels ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .panel {
+    border: 1px solid var(--border-tertiary); border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem; background: var(--bg-primary); margin-bottom: 12px;
+  }
+  .panel-title {
+    font-size: 11px; font-weight: 500; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px;
+  }
+
+  /* ── Bar rows ── */
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+  .bar-label { width: 100px; color: var(--text-secondary); flex-shrink: 0; text-align: right; font-size: 11px; }
+  .bar-track { flex: 1; height: 5px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+  .bar-count { width: 36px; font-size: 11px; color: var(--text-tertiary); flex-shrink: 0; }
+
+  /* ── Pills ── */
+  .pill { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 4px; }
+  .ptag-x { background: #1a1a1a; color: #fff; }
+  .ptag-li { background: #0A66C2; color: #fff; }
+  .pb-pain { background: #FCEBEB; color: #791F1F; }
+  .pb-feature { background: #E6F1FB; color: #0C447C; }
+  .pb-culture { background: #EAF3DE; color: #27500A; }
+  .pb-bip { background: #FAEEDA; color: #633806; }
+  .pb-cta { background: #EEEDFE; color: #3C3489; }
+
+  [data-theme="dark"] .ptag-x { background: #3f3f46; color: #f4f4f5; }
+  [data-theme="dark"] .pb-pain { background: #2d0a0a; color: #fca5a5; }
+  [data-theme="dark"] .pb-feature { background: #0f1f3d; color: #93c5fd; }
+  [data-theme="dark"] .pb-culture { background: #052e16; color: #6ee7b7; }
+  [data-theme="dark"] .pb-bip { background: #1c1007; color: #fbbf24; }
+  [data-theme="dark"] .pb-cta { background: #1e1b3d; color: #a5b4fc; }
+
+  /* ── Alert ── */
+  .alert {
+    font-size: 11px; padding: 8px 12px; border-radius: var(--radius-md);
+    background: var(--bg-warning); color: var(--text-warning);
+    border: 1px solid var(--border-warning); margin-bottom: 1rem;
+  }
+
+  /* ── Quick buttons ── */
+  .quick-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1rem; }
+  .qbtn {
+    font-size: 11px; padding: 5px 12px; cursor: pointer; border-radius: var(--radius-md);
+    border: 1px solid var(--border-secondary); background: transparent;
+    color: var(--text-secondary); font-family: var(--font); transition: all .15s;
+  }
+  .qbtn:hover { color: var(--text-primary); border-color: var(--border-primary); }
+
+  /* ── Filter row ── */
+  .filter-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .fbtn {
+    font-size: 11px; padding: 3px 10px; border-radius: 20px;
+    border: 1px solid var(--border-secondary); cursor: pointer;
+    background: transparent; color: var(--text-secondary); font-family: var(--font);
+    transition: all .15s;
+  }
+  .fbtn.on {
+    background: var(--bg-secondary); color: var(--text-primary);
+    border-color: var(--border-primary); font-weight: 500;
+  }
+
+  /* ── Idea cards ── */
+  .idea-card {
+    border: 1px solid var(--border-tertiary); border-radius: var(--radius-md);
+    padding: 12px 14px; background: var(--bg-primary); margin-bottom: 8px;
+    transition: border-color .15s;
+  }
+  .idea-card:hover { border-color: var(--border-secondary); }
+  .idea-top { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; flex-wrap: wrap; }
+  .idea-hook { font-size: 13px; color: var(--text-primary); line-height: 1.55; white-space: pre-wrap; }
+  .idea-angle-label { font-size: 11px; font-weight: 500; color: var(--text-primary); margin-top: 10px; margin-bottom: 2px; }
+  .idea-angle { font-size: 12px; color: var(--text-secondary); line-height: 1.55; }
+  .idea-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  .write-btn {
+    font-size: 11px; padding: 4px 12px; border-radius: var(--radius-md);
+    cursor: pointer; border: 1px solid var(--border-secondary);
+    background: transparent; color: var(--text-secondary); font-family: var(--font);
+    transition: all .15s;
+  }
+  .write-btn:hover { color: var(--text-primary); border-color: var(--border-primary); }
+  .done-badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 4px;
+    background: var(--bg-success); color: var(--text-success);
+    border: 1px solid var(--border-success);
+  }
+
+  /* ── Post cards ── */
+  .post-card {
+    border: 1px solid var(--border-tertiary); border-radius: var(--radius-md);
+    padding: 12px 14px; background: var(--bg-primary); margin-bottom: 8px;
+  }
+  .post-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+  .wk-badge {
+    background: var(--bg-secondary); color: var(--text-secondary);
+    font-size: 10px; padding: 2px 6px; border-radius: 4px;
+  }
+  .post-hook { font-size: 13px; color: var(--text-primary); line-height: 1.55; white-space: pre-wrap; }
+  .post-note {
+    font-size: 11px; color: var(--text-secondary); margin-top: 8px; padding: 7px 10px;
+    background: var(--bg-secondary); border-radius: var(--radius-sm);
+    border-left: 2px solid var(--border-primary); line-height: 1.5; white-space: pre-wrap;
+  }
+  .post-note-label { font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--text-tertiary); margin-bottom: 3px; }
+  .post-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+  .status-btn {
+    font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--border-secondary); background: transparent;
+    color: var(--text-secondary); font-family: var(--font); transition: all .15s;
+  }
+  .s-written .status-btn[data-s="written"] {
+    background: var(--bg-warning); color: var(--text-warning);
+    border-color: var(--border-warning); font-weight: 500;
+  }
+  .s-scheduled .status-btn[data-s="scheduled"] {
+    background: var(--bg-info); color: var(--text-info);
+    border-color: var(--border-info); font-weight: 500;
+  }
+  .s-posted .status-btn[data-s="posted"] {
+    background: var(--bg-success); color: var(--text-success);
+    border-color: var(--border-success); font-weight: 500;
+  }
+  .del-btn {
+    font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--border-tertiary); background: transparent;
+    color: var(--text-tertiary); margin-left: auto; font-family: var(--font);
+    transition: all .15s;
+  }
+  .del-btn:hover { color: var(--text-danger); border-color: var(--border-danger); }
+
+  /* ── Week header ── */
+  .week-header {
+    font-size: 11px; font-weight: 500; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px;
+    margin-top: 1.25rem; padding-bottom: 5px;
+    border-bottom: 1px solid var(--border-tertiary);
+  }
+
+  /* ── Add form ── */
+  .add-form {
+    border: 1px solid var(--border-tertiary); border-radius: var(--radius-lg);
+    padding: 1.25rem; background: var(--bg-primary); margin-bottom: 1rem;
+  }
+  .add-form-title { font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 10px; }
+  .add-form textarea, .add-form input[type="text"] {
+    width: 100%; font-size: 13px; padding: 8px 10px;
+    border-radius: var(--radius-md); border: 1px solid var(--border-secondary);
+    background: var(--bg-primary); color: var(--text-primary);
+    resize: vertical; font-family: var(--font); transition: border-color .15s;
+  }
+  .add-form textarea:focus, .add-form input[type="text"]:focus {
+    outline: none; border-color: var(--border-primary);
+  }
+  #new-hook { min-height: 90px; }
+  #new-visual-note { min-height: 70px; margin-top: 8px; }
+  .form-row {
+    display: grid; grid-template-columns: repeat(3,1fr);
+    gap: 8px; margin: 10px 0;
+  }
+  .form-row select {
+    font-size: 12px; padding: 6px 8px; border-radius: var(--radius-md);
+    border: 1px solid var(--border-secondary); background: var(--bg-primary);
+    color: var(--text-primary); font-family: var(--font);
+  }
+  .form-field-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; margin-top: 8px; }
+  .save-btn {
+    font-size: 13px; padding: 6px 18px; border-radius: var(--radius-md);
+    cursor: pointer; border: 1px solid var(--border-secondary);
+    background: var(--bg-secondary); color: var(--text-primary);
+    font-weight: 500; font-family: var(--font); transition: all .15s;
+  }
+  .save-btn:hover { border-color: var(--border-primary); }
+  .save-msg { font-size: 12px; color: var(--text-success); opacity: 0; transition: opacity .3s; }
+  .add-form-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* ── Empty state ── */
+  .empty { font-size: 13px; color: var(--text-tertiary); padding: 2.5rem 0; text-align: center; }
+
+  /* ── Modal (prompt copy) ── */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 1rem;
+  }
+  .modal-backdrop.hidden { display: none; }
+  .modal {
+    background: var(--bg-primary); border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg); padding: 1.5rem; max-width: 560px; width: 100%;
+    max-height: 80vh; overflow-y: auto;
+  }
+  .modal-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: .75rem; }
+  .modal-body {
+    font-size: 13px; color: var(--text-secondary); line-height: 1.6;
+    background: var(--bg-secondary); border-radius: var(--radius-md);
+    padding: 10px 12px; white-space: pre-wrap; margin-bottom: 1rem;
+  }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-copy {
+    font-size: 13px; padding: 6px 16px; border-radius: var(--radius-md);
+    cursor: pointer; border: 1px solid var(--border-secondary);
+    background: var(--bg-secondary); color: var(--text-primary);
+    font-weight: 500; font-family: var(--font); transition: all .15s;
+  }
+  .modal-close {
+    font-size: 13px; padding: 6px 16px; border-radius: var(--radius-md);
+    cursor: pointer; border: 1px solid var(--border-tertiary);
+    background: transparent; color: var(--text-secondary); font-family: var(--font);
+    transition: all .15s;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .metric-row { grid-template-columns: repeat(2,1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-logo">Jesters' Box <span>— Content Tracker</span></div>
+  <button class="theme-btn" onclick="toggleTheme()">Toggle theme</button>
+</header>
+
+<div class="container">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="sw('dashboard',this)">Dashboard</button>
+    <button class="tab" onclick="sw('ideas',this)">Idea bank</button>
+    <button class="tab" onclick="sw('posts',this)">Written posts</button>
+    <button class="tab" onclick="sw('add',this)">Add post</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="section active">
+    <div class="metric-row" id="metrics"></div>
+    <div class="two-col">
+      <div class="panel"><div class="panel-title">Pillar balance</div><div id="pillar-bars"></div></div>
+      <div class="panel"><div class="panel-title">Post status</div><div id="status-bars"></div></div>
+    </div>
+    <div class="panel"><div class="panel-title">Platform progress</div><div id="platform-bars"></div></div>
+    <div id="dash-alert"></div>
+    <div class="quick-btns">
+      <button class="qbtn" onclick="openPrompt('Write a Jesters Box X post — pain pillar, Week 1 trust phase, no CTA')">Write X pain post ↗</button>
+      <button class="qbtn" onclick="openPrompt('Write a Jesters Box LinkedIn post — build in public pillar, founder voice, Week 1')">Write LinkedIn BIP post ↗</button>
+      <button class="qbtn" onclick="openPrompt('Write a Jesters Box culture meme post for X')">Write culture post ↗</button>
+      <button class="qbtn" onclick="sw('ideas', document.querySelectorAll(\'.tab\')[1])">Browse idea bank ↗</button>
+    </div>
+  </div>
+
+  <!-- Idea bank -->
+  <div id="ideas" class="section">
+    <div class="filter-row" id="idea-filters">
+      <button class="fbtn on" onclick="setIdeaFilter('all',this)">All</button>
+      <button class="fbtn" onclick="setIdeaFilter('pain',this)">Pain</button>
+      <button class="fbtn" onclick="setIdeaFilter('feature',this)">Feature</button>
+      <button class="fbtn" onclick="setIdeaFilter('culture',this)">Culture</button>
+      <button class="fbtn" onclick="setIdeaFilter('bip',this)">Build in public</button>
+      <button class="fbtn" onclick="setIdeaFilter('cta',this)">CTA</button>
+      <button class="fbtn" onclick="setIdeaFilter('x',this)">X only</button>
+      <button class="fbtn" onclick="setIdeaFilter('li',this)">LinkedIn only</button>
+      <button class="fbtn" onclick="setIdeaFilter('todo',this)">Not written yet</button>
+    </div>
+    <div id="ideas-list"></div>
+  </div>
+
+  <!-- Written posts -->
+  <div id="posts" class="section">
+    <div class="filter-row" id="post-filters">
+      <button class="fbtn on" onclick="setPostFilter('all',this)">All</button>
+      <button class="fbtn" onclick="setPostFilter('written',this)">Written</button>
+      <button class="fbtn" onclick="setPostFilter('scheduled',this)">Scheduled</button>
+      <button class="fbtn" onclick="setPostFilter('posted',this)">Posted</button>
+      <button class="fbtn" onclick="setPostFilter('x',this)">X only</button>
+      <button class="fbtn" onclick="setPostFilter('li',this)">LinkedIn only</button>
+      <button class="fbtn" onclick="setPostFilter('w1',this)">Week 1</button>
+      <button class="fbtn" onclick="setPostFilter('w2',this)">Week 2</button>
+      <button class="fbtn" onclick="setPostFilter('w3',this)">Week 3</button>
+      <button class="fbtn" onclick="setPostFilter('w4',this)">Week 4</button>
+    </div>
+    <div id="posts-list"></div>
+  </div>
+
+  <!-- Add post -->
+  <div id="add" class="section">
+    <div class="add-form">
+      <div class="add-form-title">Add a written post</div>
+      <div class="form-field-label">Post copy</div>
+      <textarea id="new-hook" placeholder="Paste the finished post copy here..."></textarea>
+      <div class="form-field-label">Visual note for designer <span style="color:var(--text-tertiary)">(optional)</span></div>
+      <textarea id="new-visual-note" placeholder="e.g. Fake Slack thread, dark mode, artist uploading v47_FINAL_real_this_time.png — 1080×1080px, no branding..."></textarea>
+      <div class="form-row">
+        <select id="new-platform">
+          <option value="x">X (Twitter)</option>
+          <option value="li">LinkedIn</option>
+        </select>
+        <select id="new-pillar">
+          <option value="pain">Pain</option>
+          <option value="feature">Feature</option>
+          <option value="culture">Culture</option>
+          <option value="bip">Build in public</option>
+          <option value="cta">CTA</option>
+        </select>
+        <select id="new-week">
+          <option value="w1">Week 1</option>
+          <option value="w2">Week 2</option>
+          <option value="w3">Week 3</option>
+          <option value="w4">Week 4</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+        <button class="save-btn" onclick="addPost()">Save post</button>
+        <span id="save-msg" class="save-msg">Saved.</span>
+      </div>
+    </div>
+    <p class="add-form-hint">Posts persist across sessions via localStorage. After saving, go to <em>Written posts</em> to update the status as it moves through your pipeline.</p>
+  </div>
+
+</div><!-- /container -->
+
+<!-- Prompt modal -->
+<div class="modal-backdrop hidden" id="modal-backdrop" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title">Copy this prompt to Claude</div>
+    <div class="modal-body" id="modal-text"></div>
+    <div class="modal-actions">
+      <button class="modal-copy" onclick="copyPrompt()">Copy prompt</button>
+      <button class="modal-close" onclick="hideModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── Data ─── */
+const POSTS_KEY = 'jb-posts-v2';
+const IDEAS_DONE_KEY = 'jb-ideas-done-v1';
+let posts = [];
+let ideasDone = {};
+let ideaFilter = 'all';
+let postFilter = 'all';
+
+const PILLAR_LABELS = {pain:'Pain',feature:'Feature',culture:'Culture',bip:'Build in public',cta:'CTA'};
+const PILLAR_COLORS = {pain:'#E24B4A',feature:'#378ADD',culture:'#1D9E75',bip:'#BA7517',cta:'#7F77DD'};
+const PILLAR_TARGETS = {pain:16,feature:10,culture:10,bip:12,cta:8};
+const WEEK_LABELS = {w1:'Week 1 — trust',w2:'Week 2 — trust',w3:'Week 3 — trust',w4:'Week 4 — credibility'};
+
+const IDEAS = [
+  {id:'i1',pillar:'pain',platform:'x',hook:"your artist just sent you v47_FINAL_real_this_time.png again, didn't they",angle:"Version naming chaos — the universal relatable moment. No CTA, just recognition. Let replies and retweets do the work."},
+  {id:'i2',pillar:'pain',platform:'x',hook:"indie game dev folder structure be like:\nassets /\nassets2 /\nassets_new /\nassets_new_FINAL /\nassets_use_this_one",angle:"Folder chaos meme. Pure retweet bait. No CTA. Resonates with every single developer."},
+  {id:'i3',pillar:'pain',platform:'x',hook:'"which file is actually in the build right now?" is a question that should not exist in 2025',angle:"Engineer pain. Clean, true, shareable. Engineers retweet this one hard."},
+  {id:'i4',pillar:'pain',platform:'x',hook:"git was not built for your artists. it was built for text files. a 2MB sprite is not a text file.",angle:"Technical truth that validates artists' frustration. Both artists and engineers share this."},
+  {id:'i5',pillar:'pain',platform:'x',hook:"the worst moment in game dev: a streamer plays your game and finds the bug you introduced by using the wrong asset version",angle:"Nightmare scenario. Specific, vivid, real. Can be written as a short story thread."},
+  {id:'i6',pillar:'pain',platform:'x',hook:"fun game: count how many versions of the same sprite are sitting in your project right now",angle:"Interactive energy. Gets replies with embarrassing real numbers from devs."},
+  {id:'i7',pillar:'pain',platform:'x',hook:"how much time did you spend this week just FINDING the right asset? not making it. finding it.",angle:"The invisible time cost. Works as a poll or open question. Painful when you stop to count."},
+  {id:'i8',pillar:'pain',platform:'x',hook:"opening Blender just to check if that's the right model.\nopening Photoshop just to check if that's the right texture.\nbeing a game artist in 2025",angle:"The preview-without-opening pain. Naming specific tools (Blender, Photoshop) makes it feel real."},
+  {id:'i9',pillar:'pain',platform:'x',hook:"two artists edit the same texture. one version silently overwrites the other. nobody notices until launch day.",angle:"Binary file merge problem. Terrifying when stated plainly. Engineers and leads both feel this."},
+  {id:'i10',pillar:'pain',platform:'x',hook:'someone on the team asks "which version are we using?" for the fifth time this week',angle:"Team coordination exhaustion. PMs and leads feel this in their bones."},
+  {id:'i11',pillar:'pain',platform:'x',hook:"the 2am folder-renaming session. we've all been there.",angle:"Emotional resonance. Short, human, true. Pairs well with a relatable image."},
+  {id:'i12',pillar:'pain',platform:'x',hook:'"just drag it into the engine" they said. "it\'s easy" they said.',angle:"Manual engine sync pain. Works well with a screenshot of chaos. Engineers laugh and cry."},
+  {id:'i13',pillar:'pain',platform:'x',hook:"game jam starts in 48 hours. how organised is your asset library right now, honestly",angle:"Game jam timing hook. Deploy when GMTK or Ludum Dare is announced. Highest-leverage moment."},
+  {id:'i14',pillar:'pain',platform:'x',hook:"name a worse feeling than shipping a game and realising the character you launched with is v3, not v12",angle:"Horror story hook. Specific version numbers make it visceral and real. Culture + pain crossover."},
+  {id:'i15',pillar:'pain',platform:'x',hook:"Perforce costs $500/user/year. Git LFS requires a CS degree. there is nothing in between.\n\nuntil now.",angle:"Competitive gap positioning. Names real tools. Use in Week 4 after trust is built."},
+  {id:'i16',pillar:'pain',platform:'x',hook:"asked 20 indie devs how they manage asset versions.\n\n14: folders with creative naming\n4: Google Drive\n1: Git LFS (suffering)\n1: \"I don't, I just remember\"",angle:"Research post. Use real numbers from your actual conversations. Very shareable format."},
+  {id:'i17',pillar:'pain',platform:'li',hook:"Game studios lose 3–5 hours per week just finding the right version of an asset. Here's what that actually costs.",angle:"Data-driven ROI frame for PMs. Numbered cost breakdown. End with DM CTA."},
+  {id:'i18',pillar:'pain',platform:'li',hook:"The wrong sprite shipped. Nobody knew why. Here's what happened — and the workflow change that fixed it.",angle:"Story post. Walk the nightmare scenario step by step. Relatable and shareable on LinkedIn."},
+  {id:'i19',pillar:'pain',platform:'li',hook:"Why Git doesn't work for game artists — and what professional studios actually do instead",angle:"Educational authority post. Explains the technical gap clearly. Positions you as credible. Week 4."},
+  {id:'i20',pillar:'pain',platform:'li',hook:'Your PM is spending 30 minutes a day answering "which version is the right one?" Multiply that by the team.',angle:"PM-specific pain. LinkedIn audience feels this in salary costs and wasted standups."},
+  {id:'i21',pillar:'pain',platform:'li',hook:"Asset chaos scales with team size. Here's what it looks like at 1 person vs 5 vs 20.",angle:"Studio size comparison. Covers solo dev, small studio, and mid-tier in a single post."},
+  {id:'i22',pillar:'feature',platform:'x',hook:"Visual diff for game assets. See exactly what changed between versions — no more opening files side by side.",angle:"Core feature. Needs a GIF. One feature, one post, one aha moment. Link in replies only."},
+  {id:'i23',pillar:'feature',platform:'x',hook:"Every file type. Previewed instantly. 3D, sprites, audio, shaders, fonts — no more open-and-close hunting.",angle:"Preview feature. Show variety of file types cycling in a GIF. The speed is the demo."},
+  {id:'i24',pillar:'feature',platform:'x',hook:"go back to any version of any asset in two clicks. that's it. that's the feature.",angle:"Version control simplicity. Counter-programs Git complexity anxiety with pure ease."},
+  {id:'i25',pillar:'feature',platform:'x',hook:"one library. every asset your team has ever made. all of them, searchable, tagged, versioned.",angle:"Organisation feature. The \"one canonical home\" value prop stated plainly."},
+  {id:'i26',pillar:'feature',platform:'x',hook:"push assets to Unity directly from the library. no drag and drop. no wrong version.",angle:"Engine sync feature. Engineers and DevOps will react. Show it in a screen recording."},
+  {id:'i27',pillar:'feature',platform:'x',hook:"group assets by project, type, tag — or your own custom fields. find anything in under 10 seconds.",angle:"Collections / filtering feature. Show the speed with a short screen recording."},
+  {id:'i28',pillar:'feature',platform:'li',hook:"The biggest hidden cost in a game team isn't salary — it's the time lost to asset version confusion. Here's the workflow we built to fix it.",angle:"Feature deep-dive. Problem → product walk-through. Long form. CTA at end."},
+  {id:'i29',pillar:'feature',platform:'li',hook:"What visual diff actually means for a game artist's daily workflow",angle:"Feature education for LinkedIn PM audience. Walk through before/after. Concrete time savings."},
+  {id:'i30',pillar:'feature',platform:'li',hook:"We built instant preview for every game file type. Here's why that's harder than it sounds.",angle:"Technical credibility + BIP hybrid. Shows depth of product thinking. Builds trust with engineers."},
+  {id:'i31',pillar:'culture',platform:'x',hook:"it's #screenshotsaturday and I want to see your most chaotic asset folder. go.",angle:"Community engagement. Gets replies with gold. Screenshot the best ones for future posts."},
+  {id:'i32',pillar:'culture',platform:'x',hook:'name a more iconic duo: game dev + a folder called "assets_FINAL_v2_USE_THIS"',angle:"Meme format. Clean, punchy, relatable. No explanation needed."},
+  {id:'i33',pillar:'culture',platform:'x',hook:"game jam survival kit:\n— energy drinks\n— headphones\n— assets named properly (optional)",angle:"Jam culture. Post at jam start. Gets shares from participants. Very low effort, very high reach."},
+  {id:'i34',pillar:'culture',platform:'x',hook:"love to open Blender to confirm I'm looking at the right model when I could just... see it",angle:"Sarcastic observation. Artists recognise this instantly. Dry humour lands well on X."},
+  {id:'i35',pillar:'culture',platform:'x',hook:"big indie dev energy: shipping a game with 847 sprites and zero version control",angle:"Self-deprecating solo dev humour. Very relatable for #solodev audience."},
+  {id:'i36',pillar:'culture',platform:'x',hook:"poll: how do you currently manage your game asset versions?\n[ ] folders with increasingly desperate names\n[ ] Git / Git LFS (and pain)\n[ ] shared drive\n[ ] we have a real system (explain below)",angle:"4-option poll. Research AND reach in one post. Screenshot results for a later LinkedIn post."},
+  {id:'i37',pillar:'culture',platform:'x',hook:"watching a streamer find the wrong-version bug on launch day hits different when you know why it happened",angle:"Relatable horror observation. No explanation needed. Culture + pain crossover."},
+  {id:'i38',pillar:'culture',platform:'x',hook:"name a worse feeling than shipping a game and realising the character you launched with is v3, not v12",angle:"Horror story hook as culture bait. Specific version numbers make it visceral. Retweet magnet."},
+  {id:'i39',pillar:'bip',platform:'li',hook:"We're building version-controlled asset storage for game teams. Here's why.",angle:"Origin story post. Founder voice. Explain the gap. End with beta DM CTA. Publish in Week 1."},
+  {id:'i40',pillar:'bip',platform:'li',hook:"What we learned from our first 10 beta testers",angle:"Numbered learnings. Honest. Specific. Shows product is alive and improving. Publish Week 2+."},
+  {id:'i41',pillar:'bip',platform:'li',hook:"We got our first unsolicited tweet from a beta user. Here's what they said.",angle:"Quote post. Short. Let the user speak. Get permission first. Use a real quote only."},
+  {id:'i42',pillar:'bip',platform:'li',hook:"Week [N] recap: what we shipped, what we learned, who joined the beta",angle:"Weekly transparency. Momentum compounds over time. Update real numbers every Friday."},
+  {id:'i43',pillar:'bip',platform:'li',hook:"The feature decision that surprised us: what beta testers cared about vs what we built first",angle:"Product honesty. Shows you listen. Builds trust with future users. Strong Week 3–4 post."},
+  {id:'i44',pillar:'bip',platform:'li',hook:"We almost built the wrong thing. Here's the beta feedback that changed our roadmap.",angle:"Vulnerability + credibility. The most engaging kind of BIP post. Very LinkedIn-native."},
+  {id:'i45',pillar:'bip',platform:'li',hook:"The language that converts: why \"pipeline\" outperforms \"workflow\" in every post we've written",angle:"Meta BIP post about what you're learning from content. Very LinkedIn-native. Week 4."},
+  {id:'i46',pillar:'bip',platform:'x',hook:"week [N] of building in public. here's what broke, what worked, and what surprised us.",angle:"BIP on X — short and punchy. Link to the LinkedIn post for depth. Weekly ritual."},
+  {id:'i47',pillar:'bip',platform:'x',hook:"honest update: we were wrong about who would use this feature first",angle:"Vulnerability on X. Earns respect. Short format. Pair with a longer LinkedIn post."},
+  {id:'i48',pillar:'cta',platform:'x',hook:"We're opening 20 spots in the Jesters' Box closed beta. Asset storage built for game teams. DM me or drop your email below.",angle:"Scarcity + urgency. Use on Fridays only. Single clear action. Do not add multiple CTAs."},
+  {id:'i49',pillar:'cta',platform:'x',hook:"last call: 5 spots left in the closed beta this week.",angle:"End-of-week urgency. Only use if scarcity is real and you intend to enforce the number."},
+  {id:'i50',pillar:'cta',platform:'x',hook:"if you're doing a game jam this weekend and your asset folder already looks like a crime scene — we have beta spots open",angle:"Jam-timed CTA. Highest conversion timing of the month. Deploy at jam announcement."},
+  {id:'i51',pillar:'cta',platform:'li',hook:"Closed beta sign-up push: who's spending 3+ hours a week on asset version chaos?",angle:"Question-led CTA. PM audience responds to time framing. Include link to Google Form."},
+  {id:'i52',pillar:'cta',platform:'li',hook:"We're accepting 20 studios into our closed beta. Here's what you get — and why we're keeping it small.",angle:"Scarcity framing for LinkedIn. Longer form. Explain the exclusivity. End with form link."},
+  {id:'i53',pillar:'pain',platform:'li',hook:"Why Perforce is overkill and Git LFS is unusable — and what the 5–50 person studio actually needs",angle:"Technical credibility post for Week 4. Names competitors. Positions the gap Jesters' Box fills."},
+  {id:'i54',pillar:'culture',platform:'x',hook:"celebrating: one of our beta users just shipped their game without a single \"which version?\" question on launch week",angle:"Social proof as culture post. Keep it light, celebrate them not the product. Get permission."},
+  {id:'i55',pillar:'pain',platform:'x',hook:"the asset that broke the build is always the one nobody can find the original of",angle:"Punchy observation. Engineers and leads recognise this. No CTA needed. Pure relatability."},
+];
+
+/* ─── Storage ─── */
+function load() {
+  try { posts = JSON.parse(localStorage.getItem(POSTS_KEY)) || []; } catch(e) { posts = []; }
+  try { ideasDone = JSON.parse(localStorage.getItem(IDEAS_DONE_KEY)) || {}; } catch(e) { ideasDone = {}; }
+  render();
+}
+function savePosts() { localStorage.setItem(POSTS_KEY, JSON.stringify(posts)); }
+function saveIdeasDone() { localStorage.setItem(IDEAS_DONE_KEY, JSON.stringify(ideasDone)); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+/* ─── Theme ─── */
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('jb-theme', next);
+}
+(function applyTheme() {
+  const saved = localStorage.getItem('jb-theme') ||
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', saved);
+})();
+
+/* ─── Navigation ─── */
+function sw(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* ─── Prompt modal ─── */
+let currentPrompt = '';
+function openPrompt(text) {
+  currentPrompt = text;
+  document.getElementById('modal-text').textContent = text;
+  document.getElementById('modal-backdrop').classList.remove('hidden');
+}
+function hideModal() { document.getElementById('modal-backdrop').classList.add('hidden'); }
+function closeModal(e) { if (e.target === document.getElementById('modal-backdrop')) hideModal(); }
+function copyPrompt() {
+  navigator.clipboard.writeText(currentPrompt).catch(() => {});
+  const btn = document.querySelector('.modal-copy');
+  btn.textContent = 'Copied!';
+  setTimeout(() => { btn.textContent = 'Copy prompt'; }, 1500);
+}
+
+/* ─── Post actions ─── */
+function addPost() {
+  const hook = document.getElementById('new-hook').value.trim();
+  if (!hook) return;
+  posts.push({
+    id: uid(),
+    hook,
+    visualNote: document.getElementById('new-visual-note').value.trim(),
+    platform: document.getElementById('new-platform').value,
+    pillar: document.getElementById('new-pillar').value,
+    week: document.getElementById('new-week').value,
+    status: 'written',
+    created: Date.now()
+  });
+  savePosts();
+  document.getElementById('new-hook').value = '';
+  document.getElementById('new-visual-note').value = '';
+  const msg = document.getElementById('save-msg');
+  msg.style.opacity = 1;
+  setTimeout(() => { msg.style.opacity = 0; }, 2000);
+  render();
+}
+function setStatus(id, status) {
+  const p = posts.find(x => x.id === id);
+  if (p) { p.status = status; savePosts(); render(); }
+}
+function deletePost(id) { posts = posts.filter(x => x.id !== id); savePosts(); render(); }
+function markIdeaDone(id, done) { ideasDone[id] = done; saveIdeasDone(); render(); }
+function setIdeaFilter(f, btn) {
+  ideaFilter = f;
+  document.querySelectorAll('#idea-filters .fbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderIdeas();
+}
+function setPostFilter(f, btn) {
+  postFilter = f;
+  document.querySelectorAll('#post-filters .fbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderPostsList();
+}
+
+/* ─── Render helpers ─── */
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function pb(p) { return 'pb-' + p; }
+const PL = PILLAR_LABELS;
+
+function renderMetrics() {
+  const total = posts.length;
+  const xc = posts.filter(p=>p.platform==='x').length;
+  const li = posts.filter(p=>p.platform==='li').length;
+  const posted = posts.filter(p=>p.status==='posted').length;
+  const ideasLeft = IDEAS.filter(i=>!ideasDone[i.id]).length;
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Posts written</div><div class="metric-value">${total}</div><div class="metric-sub">target: 56 total</div></div>
+    <div class="metric"><div class="metric-label">X posts</div><div class="metric-value">${xc}</div><div class="metric-sub">target: 36</div></div>
+    <div class="metric"><div class="metric-label">LinkedIn</div><div class="metric-value">${li}</div><div class="metric-sub">target: 20</div></div>
+    <div class="metric"><div class="metric-label">Ideas left</div><div class="metric-value">${ideasLeft}</div><div class="metric-sub">of ${IDEAS.length} total</div></div>
+  `;
+}
+
+function renderBars() {
+  document.getElementById('pillar-bars').innerHTML = Object.keys(PILLAR_LABELS).map(p => {
+    const count = posts.filter(x=>x.pillar===p).length;
+    const target = PILLAR_TARGETS[p];
+    const pct = Math.min(100, Math.round(count/target*100));
+    return `<div class="bar-row">
+      <span class="bar-label">${PILLAR_LABELS[p]}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${PILLAR_COLORS[p]}"></div></div>
+      <span class="bar-count">${count}/${target}</span>
+    </div>`;
+  }).join('');
+
+  const sc = {written:0,scheduled:0,posted:0};
+  posts.forEach(p => { if(sc[p.status]!==undefined) sc[p.status]++; });
+  const sColors = {written:'#BA7517',scheduled:'#378ADD',posted:'#1D9E75'};
+  document.getElementById('status-bars').innerHTML = ['written','scheduled','posted'].map(s => {
+    const pct = Math.min(100, Math.round(sc[s]/Math.max(posts.length,1)*100));
+    return `<div class="bar-row">
+      <span class="bar-label">${s.charAt(0).toUpperCase()+s.slice(1)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${sColors[s]}"></div></div>
+      <span class="bar-count">${sc[s]}</span>
+    </div>`;
+  }).join('');
+
+  const xc = posts.filter(p=>p.platform==='x').length;
+  const li = posts.filter(p=>p.platform==='li').length;
+  document.getElementById('platform-bars').innerHTML = [
+    ['X (Twitter)', xc, 36, '#1a1a1a'],
+    ['LinkedIn', li, 20, '#0A66C2']
+  ].map(([label,count,target,color]) => {
+    const pct = Math.min(100, Math.round(count/target*100));
+    return `<div class="bar-row">
+      <span class="bar-label">${label}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span class="bar-count">${count}/${target}</span>
+    </div>`;
+  }).join('');
+
+  const painCount = posts.filter(x=>x.pillar==='pain').length;
+  const cultureCount = posts.filter(x=>x.pillar==='culture').length;
+  const ctaCount = posts.filter(x=>x.pillar==='cta').length;
+  const warn = document.getElementById('dash-alert');
+  if (ctaCount > 0 && (painCount + cultureCount) < ctaCount * 3) {
+    warn.innerHTML = `<div class="alert">Pillar ratio: you have ${ctaCount} CTA post${ctaCount>1?'s':''} but only ${painCount+cultureCount} pain/culture posts. Aim for at least 3 pain or culture posts per CTA before posting.</div>`;
+  } else { warn.innerHTML = ''; }
+}
+
+function renderIdeas() {
+  const list = document.getElementById('ideas-list');
+  const filtered = IDEAS.filter(i => {
+    if (ideaFilter === 'todo') return !ideasDone[i.id];
+    if (ideaFilter === 'all') return true;
+    if (ideaFilter === 'x' || ideaFilter === 'li') return i.platform === ideaFilter;
+    return i.pillar === ideaFilter;
+  });
+  if (!filtered.length) { list.innerHTML = '<div class="empty">No ideas match this filter.</div>'; return; }
+  const prompt = (idea) =>
+    `Write a full Jesters Box post for this idea. Platform: ${idea.platform==='x'?'X (Twitter)':'LinkedIn'}. Pillar: ${PL[idea.pillar]}. Hook: ${idea.hook.replace(/\n/g,' ')}. Angle: ${idea.angle}`;
+  list.innerHTML = filtered.map(idea => {
+    const done = ideasDone[idea.id];
+    return `<div class="idea-card" id="icard-${idea.id}">
+      <div class="idea-top">
+        <span class="pill ${pb(idea.pillar)}">${PL[idea.pillar]}</span>
+        <span class="pill ${idea.platform==='x'?'ptag-x':'ptag-li'}">${idea.platform==='x'?'X':'LinkedIn'}</span>
+        ${done ? '<span class="done-badge">Written</span>' : ''}
+      </div>
+      <div class="idea-hook">${esc(idea.hook)}</div>
+      <div class="idea-angle-label">Angle &amp; notes:</div>
+      <div class="idea-angle">${esc(idea.angle)}</div>
+      <div class="idea-actions">
+        <button class="write-btn" onclick='openPrompt(${JSON.stringify(prompt(idea))})'>Write this post ↗</button>
+        <button class="write-btn" onclick="markIdeaDone('${idea.id}', ${!done})">${done ? 'Mark as not done' : 'Mark as written'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderPostsList() {
+  const list = document.getElementById('posts-list');
+  const filtered = posts.filter(p => {
+    if (postFilter === 'all') return true;
+    if (postFilter === 'x') return p.platform === 'x';
+    if (postFilter === 'li') return p.platform === 'li';
+    if (['written','scheduled','posted'].includes(postFilter)) return p.status === postFilter;
+    if (['w1','w2','w3','w4'].includes(postFilter)) return p.week === postFilter;
+    return true;
+  });
+  if (!filtered.length) { list.innerHTML = `<div class="empty">No posts yet${postFilter!=='all'?' for this filter':''}. Add one from the Add post tab.</div>`; return; }
+  const byWeek = {w1:[],w2:[],w3:[],w4:[]};
+  filtered.forEach(p => { if(byWeek[p.week]) byWeek[p.week].push(p); });
+  list.innerHTML = Object.keys(byWeek).map(wk => {
+    if (!byWeek[wk].length) return '';
+    return `<div>
+      <div class="week-header">${WEEK_LABELS[wk]} · ${byWeek[wk].length} post${byWeek[wk].length>1?'s':''}</div>
+      ${byWeek[wk].map(p => `
+        <div class="post-card s-${p.status}">
+          <div class="post-top">
+            <span class="pill ${p.platform==='x'?'ptag-x':'ptag-li'}">${p.platform==='x'?'X':'LinkedIn'}</span>
+            <span class="pill ${pb(p.pillar)}">${PL[p.pillar]}</span>
+            <span class="wk-badge">${WEEK_LABELS[p.week]}</span>
+          </div>
+          <div class="post-hook">${esc(p.hook)}</div>
+          ${p.visualNote ? `<div class="post-note"><div class="post-note-label">Visual brief</div>${esc(p.visualNote)}</div>` : ''}
+          <div class="post-actions">
+            ${['written','scheduled','posted'].map(s=>`<button class="status-btn" data-s="${s}" onclick="setStatus('${p.id}','${s}')">${s.charAt(0).toUpperCase()+s.slice(1)}</button>`).join('')}
+            <button class="del-btn" onclick="deletePost('${p.id}')">Delete</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+function render() { renderMetrics(); renderBars(); renderIdeas(); renderPostsList(); }
+load();
+</script>
+</body>
+</html>
