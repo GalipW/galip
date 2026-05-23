@@ -457,8 +457,6 @@
 
 <script>
 /* ─── Data ─── */
-const POSTS_KEY = 'jb-posts-v2';
-const IDEAS_DONE_KEY = 'jb-ideas-done-v1';
 let posts = [];
 let ideasDone = {};
 let ideaFilter = 'all';
@@ -527,20 +525,26 @@ const IDEAS = [
   {id:'i55',pillar:'pain',platform:'x',hook:"the asset that broke the build is always the one nobody can find the original of",angle:"Punchy observation. Engineers and leads recognise this. No CTA needed. Pure relatability."},
 ];
 
-/* ─── Storage ─── */
-function load() {
-  try { posts = JSON.parse(localStorage.getItem(POSTS_KEY)) || []; } catch(e) { posts = []; }
-  try { ideasDone = JSON.parse(localStorage.getItem(IDEAS_DONE_KEY)) || {}; } catch(e) { ideasDone = {}; }
+/* ─── API helpers ─── */
+const api = {
+  get:    (url)           => fetch(url).then(r => r.json()),
+  post:   (url, body)     => fetch(url, {method:'POST',  headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}),
+  patch:  (url, body)     => fetch(url, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}),
+  put:    (url, body)     => fetch(url, {method:'PUT',   headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}),
+  del:    (url)           => fetch(url, {method:'DELETE'}),
+};
+
+async function load() {
+  try { posts     = await api.get('/api/posts'); }       catch(e) { posts = []; }
+  try { ideasDone = await api.get('/api/ideas-done'); }  catch(e) { ideasDone = {}; }
   render();
 }
-function savePosts() { localStorage.setItem(POSTS_KEY, JSON.stringify(posts)); }
-function saveIdeasDone() { localStorage.setItem(IDEAS_DONE_KEY, JSON.stringify(ideasDone)); }
+
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
-/* ─── Theme ─── */
+/* ─── Theme (localStorage fine — UI pref, not business data) ─── */
 function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme');
-  const next = current === 'dark' ? 'light' : 'dark';
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('jb-theme', next);
 }
@@ -575,20 +579,21 @@ function copyPrompt() {
 }
 
 /* ─── Post actions ─── */
-function addPost() {
+async function addPost() {
   const hook = document.getElementById('new-hook').value.trim();
   if (!hook) return;
-  posts.push({
+  const post = {
     id: uid(),
     hook,
-    visualNote: document.getElementById('new-visual-note').value.trim(),
+    visual_note: document.getElementById('new-visual-note').value.trim(),
     platform: document.getElementById('new-platform').value,
     pillar: document.getElementById('new-pillar').value,
     week: document.getElementById('new-week').value,
     status: 'written',
     created: Date.now()
-  });
-  savePosts();
+  };
+  await api.post('/api/posts', post);
+  posts.push(post);
   document.getElementById('new-hook').value = '';
   document.getElementById('new-visual-note').value = '';
   const msg = document.getElementById('save-msg');
@@ -596,12 +601,21 @@ function addPost() {
   setTimeout(() => { msg.style.opacity = 0; }, 2000);
   render();
 }
-function setStatus(id, status) {
+async function setStatus(id, status) {
+  await api.patch(`/api/posts/${id}`, { status });
   const p = posts.find(x => x.id === id);
-  if (p) { p.status = status; savePosts(); render(); }
+  if (p) { p.status = status; render(); }
 }
-function deletePost(id) { posts = posts.filter(x => x.id !== id); savePosts(); render(); }
-function markIdeaDone(id, done) { ideasDone[id] = done; saveIdeasDone(); render(); }
+async function deletePost(id) {
+  await api.del(`/api/posts/${id}`);
+  posts = posts.filter(x => x.id !== id);
+  render();
+}
+async function markIdeaDone(id, done) {
+  await api.put(`/api/ideas-done/${id}`, { done });
+  ideasDone[id] = done;
+  render();
+}
 function setIdeaFilter(f, btn) {
   ideaFilter = f;
   document.querySelectorAll('#idea-filters .fbtn').forEach(b => b.classList.remove('on'));
@@ -738,7 +752,7 @@ function renderPostsList() {
             <span class="wk-badge">${WEEK_LABELS[p.week]}</span>
           </div>
           <div class="post-hook">${esc(p.hook)}</div>
-          ${p.visualNote ? `<div class="post-note"><div class="post-note-label">Visual brief</div>${esc(p.visualNote)}</div>` : ''}
+          ${p.visual_note ? `<div class="post-note"><div class="post-note-label">Visual brief</div>${esc(p.visual_note)}</div>` : ''}
           <div class="post-actions">
             ${['written','scheduled','posted'].map(s=>`<button class="status-btn" data-s="${s}" onclick="setStatus('${p.id}','${s}')">${s.charAt(0).toUpperCase()+s.slice(1)}</button>`).join('')}
             <button class="del-btn" onclick="deletePost('${p.id}')">Delete</button>
