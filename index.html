@@ -697,6 +697,22 @@ function renderBars() {
   } else { warn.innerHTML = ''; }
 }
 
+/* Prompt metinleri id'ye göre saklanıyor — HTML attribute içine gömülmüyor */
+const IDEA_PROMPTS = {};
+IDEAS.forEach(idea => {
+  IDEA_PROMPTS[idea.id] = `Write a full Jesters Box post for this idea. Platform: ${idea.platform==='x'?'X (Twitter)':'LinkedIn'}. Pillar: ${PILLAR_LABELS[idea.pillar]}. Hook: ${idea.hook.replace(/\n/g,' ')}. Angle: ${idea.angle}`;
+});
+
+/* Event delegation — tüm idea-list tıklamaları burada yakalanıyor */
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const action = btn.dataset.action;
+  const id     = btn.dataset.id;
+  if (action === 'write') openPrompt(IDEA_PROMPTS[id]);
+  if (action === 'mark')  markIdeaDone(id, btn.dataset.done === 'true');
+});
+
 function renderIdeas() {
   const list = document.getElementById('ideas-list');
   const filtered = IDEAS.filter(i => {
@@ -706,10 +722,8 @@ function renderIdeas() {
     return i.pillar === ideaFilter;
   });
   if (!filtered.length) { list.innerHTML = '<div class="empty">No ideas match this filter.</div>'; return; }
-  const prompt = (idea) =>
-    `Write a full Jesters Box post for this idea. Platform: ${idea.platform==='x'?'X (Twitter)':'LinkedIn'}. Pillar: ${PL[idea.pillar]}. Hook: ${idea.hook.replace(/\n/g,' ')}. Angle: ${idea.angle}`;
   list.innerHTML = filtered.map(idea => {
-    const done = ideasDone[idea.id];
+    const done = !!ideasDone[idea.id];
     return `<div class="idea-card" id="icard-${idea.id}">
       <div class="idea-top">
         <span class="pill ${pb(idea.pillar)}">${PL[idea.pillar]}</span>
@@ -720,8 +734,8 @@ function renderIdeas() {
       <div class="idea-angle-label">Angle &amp; notes:</div>
       <div class="idea-angle">${esc(idea.angle)}</div>
       <div class="idea-actions">
-        <button class="write-btn" onclick='openPrompt(${JSON.stringify(prompt(idea))})'>Write this post ↗</button>
-        <button class="write-btn" onclick="markIdeaDone('${idea.id}', ${!done})">${done ? 'Mark as not done' : 'Mark as written'}</button>
+        <button class="write-btn" data-action="write" data-id="${idea.id}">Write this post ↗</button>
+        <button class="write-btn" data-action="mark"  data-id="${idea.id}" data-done="${!done}">${done ? 'Mark as not done' : 'Mark as written'}</button>
       </div>
     </div>`;
   }).join('');
